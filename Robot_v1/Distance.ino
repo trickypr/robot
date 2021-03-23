@@ -5,7 +5,7 @@
 #define DIST_ECHO 12
 // You can make this longer distance at more expenses
 #define DIST_MAX 200 //cm
-#define DIST_SOUND_SPEED 340
+#define DIST_SOUND_SPEED 346 // The speed of sound is different in Canberra
 
 const float DIST_TIMEOUT = DIST_MAX * 60;
 
