@@ -14,7 +14,10 @@ enum states
   right
 };
 
-bool motorRunning = false;
+bool motorRunning = true;
+bool motorWasRunning = false;
+bool pauseJustPressed = false;
+bool reversing = false;
 uint8 speed = percent(50);
 byte state = straight;
 
@@ -44,10 +47,15 @@ void loop()
     IRData data = IRGetData();
 
     // If we get command 0x15, the ⏵︎ button is pressed
-    if (data.command == 0x15 && IrReceiver.repeatCount == 0)
+    if (data.command == 0x15 && !pauseJustPressed)
     {
       // Invert the motor running var
       motorRunning = !motorRunning;
+      pauseJustPressed = true;
+    }
+    else
+    {
+      pauseJustPressed = false;
     }
 
     // If we get command 0x09, the ⏭︎ is pressed
@@ -56,11 +64,13 @@ void loop()
       // Increment the offset
       state = left;
     }
-
-    // If we get command 0x7, the ⏮︎ was pressed
-    if (data.command == 0x7)
+    else if (data.command == 0x7) // If we get command 0x7, the ⏮︎ was pressed
     {
       state = right;
+    }
+    else // Otherwise, revert to straight
+    {
+      state = straight;
     }
 
     // If we get command 0x40, the + is pressed
@@ -77,6 +87,7 @@ void loop()
 
     if (Serial)
     {
+      Serial.print("Running: ");
       Serial.print(motorRunning);
       Serial.print(", State: ");
       Serial.print(state);
@@ -85,28 +96,55 @@ void loop()
     }
   }
 
+  // Now, lets check if we have got too close to anything. We can change the motor
+  // running state if we have, to correct the course of the robot.
+  //
+  // TODO: Move distance to intergers, as they are more performant than floats
+  float distance = getDistance();
+
+  if (distance < 20 && !reversing)
+  {
+    motorRunning = false;
+  }
+
   // All of the logic to handle changes. This is out here because that means
   // I dont have to deal with every edge case. It all just happens at once
-  motorsStop();
 
   // Make the robot move
   if (motorRunning)
   {
     if (state == left)
     {
-      motorsLeftSpeed(speed);
+      motorsLeftSpeed(200, false);
+      motorsRightSpeed(200, true);
     }
     else if (state == right)
     {
-      motorsRightSpeed(speed);
+      motorsRightSpeed(200, false);
+      motorsLeftSpeed(200, true);
     }
     else
     {
-      motorsStraightSpeed(speed);
+      if (!motorWasRunning)
+      {
+        motorsLeftSpeed(speed, false);
+        delay(200);
+        motorsRightSpeed(speed, false);
+      }
+      else
+      {
+        motorsStraightSpeed(speed);
+      }
     }
+
+    motorWasRunning = true;
   }
   else
   {
     motorsStop();
+    motorWasRunning = false;
   }
+
+  // Lets free up the arduino for a period of time to save on battery power
+  delay(10);
 }

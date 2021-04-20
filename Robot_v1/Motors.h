@@ -3,18 +3,13 @@
 
 // =============================================================================
 // Motor config - specifies all of the pins and other parameters that the L298N needs
-#define MOTOR_OUT_1 13
-#define MOTOR_OUT_2 12
+#define MOTOR_OUT_1 12
+#define MOTOR_OUT_2 7
 #define MOTOR_ENABLE_1 9
 
-#define MOTOR_OUT_3 7
-#define MOTOR_OUT_4 8
+#define MOTOR_OUT_3 8
+#define MOTOR_OUT_4 11
 #define MOTOR_ENABLE_2 10
-
-#define MOTOR_OUT_All                                                                  \
-  {                                                                                    \
-    MOTOR_OUT_1, MOTOR_OUT_2, MOTOR_OUT_3, MOTOR_OUT_4, MOTOR_ENABLE_1, MOTOR_ENABLE_2 \
-  }
 
 // =============================================================================
 // Motor logic
@@ -24,33 +19,47 @@
  */
 void motorsSetup()
 {
-  // This is assigned as a variable here for a number of reasons:
-  // - The compiler will have a fit if I use the MOTOR_OUT_All constat like MOTOR_OUT_All[i]
-  // - This stops it from bloating memory, as it will be cleared once this function goes out of scope
-  uint8 all_out[6] = MOTOR_OUT_All;
-
-  // Set all of the control pins to outputs. Note that I am using bytes to save memory
-  for (uint8 i = 0; i < 4; i++)
-  {
-    // Initialises the specified pin
-    pinMode(all_out[i], OUTPUT);
-  }
+  // Initialise the pins required for the motor to run correctly
+  pinMode(MOTOR_OUT_1, OUTPUT);
+  pinMode(MOTOR_OUT_2, OUTPUT);
+  pinMode(MOTOR_OUT_3, OUTPUT);
+  pinMode(MOTOR_OUT_4, OUTPUT);
+  pinMode(MOTOR_ENABLE_1, OUTPUT);
+  pinMode(MOTOR_ENABLE_2, OUTPUT);
 }
 
-void motorsRightSpeed(uint8 speed)
+void motorsRightSpeed(uint8 speed, bool reverse)
 {
   // Setup one side
-  digitalWrite(MOTOR_OUT_1, HIGH);
-  digitalWrite(MOTOR_OUT_2, LOW);
+
+  if (reverse)
+  {
+    digitalWrite(MOTOR_OUT_1, LOW);
+    digitalWrite(MOTOR_OUT_2, HIGH);
+  }
+  else
+  {
+    digitalWrite(MOTOR_OUT_1, HIGH);
+    digitalWrite(MOTOR_OUT_2, LOW);
+  }
+
   // Enable side
   analogWrite(MOTOR_ENABLE_1, speed);
 }
 
-void motorsLeftSpeed(uint8 speed)
+void motorsLeftSpeed(uint8 speed, bool reverse)
 {
   // Setup one side
-  digitalWrite(MOTOR_OUT_3, HIGH);
-  digitalWrite(MOTOR_OUT_4, LOW);
+  if (reverse)
+  {
+    digitalWrite(MOTOR_OUT_3, LOW);
+    digitalWrite(MOTOR_OUT_4, HIGH);
+  }
+  else
+  {
+    digitalWrite(MOTOR_OUT_3, HIGH);
+    digitalWrite(MOTOR_OUT_4, LOW);
+  }
   // Enable side
   analogWrite(MOTOR_ENABLE_2, speed);
 }
@@ -63,11 +72,10 @@ void motorsStraightSpeed(uint8 speed)
   // Setup one side
   digitalWrite(MOTOR_OUT_1, HIGH);
   digitalWrite(MOTOR_OUT_2, LOW);
+  analogWrite(MOTOR_ENABLE_1, speed);
   // Setup the other side
   digitalWrite(MOTOR_OUT_3, HIGH);
   digitalWrite(MOTOR_OUT_4, LOW);
-  // Start them both at the same time
-  analogWrite(MOTOR_ENABLE_1, speed);
   analogWrite(MOTOR_ENABLE_2, speed);
 }
 

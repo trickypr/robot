@@ -1,0 +1,6 @@
+{
+    "port": "/dev/ttyACM0",
+    "board": "arduino:avr:uno",
+    "programmer": "arduino:arduinoisp",
+    "sketch": "Robot_v1/Robot_v1.ino"
+}
