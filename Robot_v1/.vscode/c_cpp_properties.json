@@ -20,10 +20,16 @@
                 "/home/main/Arduino/libraries/IRremote/src",
                 "/home/main/.arduino15/packages/arduino/tools/avr-gcc/7.3.0-atmel3.6.1-arduino7/lib/gcc/avr/7.3.0/include",
                 "/home/main/.arduino15/packages/arduino/tools/avr-gcc/7.3.0-atmel3.6.1-arduino7/lib/gcc/avr/7.3.0/include-fixed",
-                "/home/main/.arduino15/packages/arduino/tools/avr-gcc/7.3.0-atmel3.6.1-arduino7/avr/include"
+                "/home/main/.arduino15/packages/arduino/tools/avr-gcc/7.3.0-atmel3.6.1-arduino7/avr/include",
+                "/Applications/Arduino.app/Contents/Java/hardware/arduino/avr/**",
+                "/Applications/Arduino.app/Contents/Java/hardware/tools/**",
+                "/Applications/Arduino.app/Contents/Java/libraries/**",
+                "/Users/school/Documents/Arduino/libraries/**",
+                "/Applications/Arduino.app/Contents/Java/tools/**"
             ],
             "forcedInclude": [
-                "/home/main/.arduino15/packages/arduino/hardware/avr/1.8.3/cores/arduino/Arduino.h"
+                "/home/main/.arduino15/packages/arduino/hardware/avr/1.8.3/cores/arduino/Arduino.h",
+                "/Applications/Arduino.app/Contents/Java/hardware/arduino/avr/cores/arduino/Arduino.h"
             ],
             "cStandard": "c11",
             "cppStandard": "c++11",
@@ -529,7 +535,8 @@
                 "__cpp_init_captures=201304",
                 "__ATOMIC_ACQ_REL=4",
                 "__ATOMIC_RELEASE=3",
-                "__BUILTIN_AVR_FMUL=1"
+                "__BUILTIN_AVR_FMUL=1",
+                "USBCON"
             ]
         }
     ]

@@ -79,6 +79,21 @@ void motorsStraightSpeed(uint8 speed)
   analogWrite(MOTOR_ENABLE_2, speed);
 }
 
+/**
+ * Go reverse with a specified speed
+ */
+void motorsReverseSpeed(uint8 speed)
+{
+  // Setup one side
+  digitalWrite(MOTOR_OUT_1, LOW);
+  digitalWrite(MOTOR_OUT_2, HIGH);
+  analogWrite(MOTOR_ENABLE_1, speed);
+  // Setup the other side
+  digitalWrite(MOTOR_OUT_3, LOW);
+  digitalWrite(MOTOR_OUT_4, HIGH);
+  analogWrite(MOTOR_ENABLE_2, speed);
+}
+
 void motorsSpeedAndOffset(uint8 speed, int8 offset)
 {
   // Setup one side

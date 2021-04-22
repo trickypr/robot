@@ -7,17 +7,21 @@
 #include "Numbers.h"
 #include "IR.h"
 
+#define STOP_DISTANCE 20
+
 enum states
 {
   straight,
   left,
-  right
+  right,
+  reverse,
 };
 
 bool motorRunning = true;
 bool motorWasRunning = false;
 bool pauseJustPressed = false;
-bool reversing = false;
+bool overrideDist = false;
+byte stateResetCounter = 0;
 uint8 speed = percent(50);
 byte state = straight;
 
@@ -39,6 +43,16 @@ void setup()
 
 void loop()
 {
+  // If the state hasn't just changed
+  if (stateResetCounter > 5) {
+    // Reset the state to straight. This will be overridden by an external, constant IR signal
+    state = straight;
+    overrideDist = false;
+  } else {
+    // Increment restet counter
+    stateResetCounter += 1;
+  }
+
   // The main code for the robot
   // If remote input has been received
   if (IRHasReceivedCommand())
@@ -68,21 +82,28 @@ void loop()
     {
       state = right;
     }
-    else // Otherwise, revert to straight
-    {
-      state = straight;
+
+    // If we get the command 0x43, the ↩️ button was pressed 
+    if (data.command == 0x43) {
+      state = reverse;
+      motorRunning = true;
     }
 
     // If we get command 0x40, the + is pressed
     if (data.command == 0x40)
     {
-      speed += 1;
+      speed += 5;
+    }
+
+    // If C is pressed
+    if (data.command == 0xD) {
+      overrideDist = true;
     }
 
     // If we get command 0x19, the - is pressed
     if (data.command == 0x19)
     {
-      speed -= 1;
+      speed -= 5;
     }
 
     if (Serial)
@@ -94,6 +115,8 @@ void loop()
       Serial.print(", Speed: ");
       Serial.println(speed);
     }
+
+    stateResetCounter = 0;
   }
 
   // Now, lets check if we have got too close to anything. We can change the motor
@@ -102,7 +125,8 @@ void loop()
   // TODO: Move distance to intergers, as they are more performant than floats
   float distance = getDistance();
 
-  if (distance < 20 && !reversing)
+  // Check if it is in the stop distance. Ignore if it is set to reverse.
+  if (distance < STOP_DISTANCE && state != reverse && !overrideDist)
   {
     motorRunning = false;
   }
@@ -123,18 +147,22 @@ void loop()
       motorsRightSpeed(200, false);
       motorsLeftSpeed(200, true);
     }
+    else if (state == reverse) 
+    {
+      motorsReverseSpeed(speed);
+    }
     else
     {
-      if (!motorWasRunning)
-      {
-        motorsLeftSpeed(speed, false);
-        delay(200);
-        motorsRightSpeed(speed, false);
-      }
-      else
-      {
+      // if (!motorWasRunning)
+      // {
+      //   motorsLeftSpeed(speed, false);
+      //   delay(200);
+      //   motorsRightSpeed(speed, false);
+      // }
+      // else
+      // {
         motorsStraightSpeed(speed);
-      }
+      // }
     }
 
     motorWasRunning = true;

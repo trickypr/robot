@@ -29,6 +29,11 @@ float getDistance()
   // Use this time to calculate the distance
   float distance = (float)pingTime * DIST_SOUND_SPEED / 2 / 10000;
 
+  // If the distance is 0.00 it has almost certainly timed out. Set it to max distance.
+  if (distance == 0.00) {
+    distance = DIST_MAX;
+  }
+
   // Return the value ready to use
   return distance;
 }
