@@ -7,8 +7,8 @@
 #define MOTOR_OUT_2 7
 #define MOTOR_ENABLE_1 9
 
-#define MOTOR_OUT_3 11
-#define MOTOR_OUT_4 8
+#define MOTOR_OUT_3 8
+#define MOTOR_OUT_4 11
 #define MOTOR_ENABLE_2 10
 
 // =============================================================================
@@ -17,7 +17,7 @@
 /**
  * Initialises the motor driver. MUST be called before using any of the motor functions
  */
-inline void motorsSetup()
+void motorsSetup()
 {
   // Initialise the pins required for the motor to run correctly
   pinMode(MOTOR_OUT_1, OUTPUT);

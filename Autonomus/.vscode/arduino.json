@@ -1,5 +1,5 @@
 {
-    "port": "/dev/tty.usbmodem145101",
+    "port": "/dev/tty.usbmodem14101",
     "board": "arduino:avr:uno",
     "programmer": "AVR ISP",
     "sketch": "Robot_v1.ino",

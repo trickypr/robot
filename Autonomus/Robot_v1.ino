@@ -8,29 +8,22 @@
 #include "IR.h"
 
 #define STOP_DISTANCE 20
-#define REVERSE_DISTANCE 15
-#define DISTANCE_DELAY 400
-#define RESET_DELAY 1000
-
-#define LEFT_OFFSET 0
-#define RIGHT_OFFSET 10
-
-#define MOTOR_SPEED 200
 
 enum states
 {
-  navigate,
-  map,
-  idle,
+  straight,
+  left,
+  right,
+  reverse,
 };
 
 bool motorRunning = true;
 bool motorWasRunning = false;
-bool lastRand = false;
-
-uint8 timesLooped = 0;
+bool pauseJustPressed = false;
+bool overrideDist = false;
+byte stateResetCounter = 0;
 uint8 speed = percent(50);
-byte state = idle;
+byte state = straight;
 
 void setup()
 {
@@ -59,82 +52,54 @@ void loop()
   // Check if it is in the stop distance. Ignore if it is set to reverse.
   if (distance < STOP_DISTANCE)
   {
-    timesLooped = 0;
-
     Serial.println("Checking distance stuff");
-
-    if (distance < REVERSE_DISTANCE)
-    {
-      motorsReverseSpeed(MOTOR_SPEED);
-      delay(DISTANCE_DELAY);
-      motorsStop();
-      delay(RESET_DELAY);
-      motorsTurnLeftSpeed(MOTOR_SPEED);
-      delay(DISTANCE_DELAY);
-      motorsStop();
-      delay(RESET_DELAY);
-      return;
-    }
 
     // Stop the motor and make a note of the distance
     motorRunning = false;
     motorsStop();
-    delay(RESET_DELAY);
     float straightDistance = distance;
 
     // Turn left and get the left distance
-    motorsTurnLeftSpeed(MOTOR_SPEED);
-    delay(DISTANCE_DELAY + LEFT_OFFSET);
+    motorsTurnLeftSpeed(200);
+    delay(500);
     motorsStop();
     float leftDistance = getDistance();
-    delay(RESET_DELAY);
+    delay(100);
 
     Serial.print("Left distance: ");
     Serial.println(leftDistance);
 
     // Return to the straight distance
-    motorsTurnRightSpeed(MOTOR_SPEED);
-    delay(DISTANCE_DELAY + RIGHT_OFFSET);
+    motorsTurnRightSpeed(200);
+    delay(500);
     motorsStop();
-    delay(RESET_DELAY);
+    delay(100);
 
     // Turn right and get the right distance
-    motorsTurnRightSpeed(MOTOR_SPEED);
-    delay(DISTANCE_DELAY + RIGHT_OFFSET);
+    motorsTurnRightSpeed(200);
+    delay(500);
     motorsStop();
     float rightDistance = getDistance();
-    delay(RESET_DELAY);
 
     Serial.print("Right distance: ");
     Serial.println(rightDistance);
 
-    if (rightDistance > leftDistance && rightDistance > straightDistance)
-    {
-      motorRunning = true;
-    }
-    else if (leftDistance > straightDistance)
-    {
-      motorsTurnLeftSpeed(MOTOR_SPEED);
-      delay(DISTANCE_DELAY + LEFT_OFFSET);
+    // Now we can perform some logic based on this to determine the movements
+    // we should take
+    if (leftDistance > straightDistance) {
+      motorsTurnLeftSpeed(200);
+      delay(500);
       motorsStop();
-      delay(RESET_DELAY);
-
-      motorsTurnLeftSpeed(MOTOR_SPEED);
-      delay(DISTANCE_DELAY + LEFT_OFFSET);
-      motorsStop();
-      delay(RESET_DELAY);
-
       motorRunning = true;
-    }
-    else
-    {
-      motorsReverseSpeed(MOTOR_SPEED);
-      delay(DISTANCE_DELAY * 2);
-      motorsTurnLeftSpeed(MOTOR_SPEED);
-      delay(DISTANCE_DELAY);
+    } else if (rightDistance > straightDistance) {
+      motorsTurnRightSpeed(200);
+      delay(500);
       motorsStop();
-      delay(RESET_DELAY);
       motorRunning = true;
+    } else {
+      motorsTurnRightSpeed(200);
+      delay(500);
+      motorsStop();
       return;
     }
   }
@@ -145,16 +110,32 @@ void loop()
   // Make the robot move
   if (motorRunning)
   {
-
-    if (!motorWasRunning)
+    if (state == left)
     {
-      motorsLeftSpeed(speed, false);
-      delay(200);
-      motorsRightSpeed(speed, false);
+      motorsLeftSpeed(200, false);
+      motorsRightSpeed(200, true);
+    }
+    else if (state == right)
+    {
+      motorsRightSpeed(200, false);
+      motorsLeftSpeed(200, true);
+    }
+    else if (state == reverse) 
+    {
+      motorsReverseSpeed(speed);
     }
     else
     {
-      motorsStraightSpeed(speed);
+      if (!motorWasRunning)
+      {
+        motorsLeftSpeed(speed, false);
+        delay(200);
+        motorsRightSpeed(speed, false);
+      }
+      else
+      {
+        motorsStraightSpeed(speed);
+      }
     }
 
     motorWasRunning = true;
@@ -165,29 +146,6 @@ void loop()
     motorWasRunning = false;
   }
 
-  if (timesLooped > 250)
-  {
-    timesLooped = 0;
-    Serial.println(timesLooped);
-    motorsReverseSpeed(MOTOR_SPEED);
-    delay(DISTANCE_DELAY);
-    motorsStop();
-    delay(RESET_DELAY);
-    if (lastRand)
-    {
-      motorsTurnLeftSpeed(MOTOR_SPEED);
-    }
-    else
-    {
-      motorsTurnRightSpeed(MOTOR_SPEED);
-    }
-    delay(DISTANCE_DELAY);
-    motorsStop();
-    delay(RESET_DELAY);
-  }
-
   // Lets free up the arduino for a period of time to save on battery power
-  delay(20);
-  timesLooped++;
-  lastRand = !lastRand;
+  delay(10);
 }
