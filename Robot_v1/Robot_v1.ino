@@ -9,19 +9,19 @@
 
 #define STOP_DISTANCE 20
 #define REVERSE_DISTANCE 15
-#define DISTANCE_DELAY 400
+#define DISTANCE_DELAY 350
 #define RESET_DELAY 1000
 
 #define LEFT_OFFSET 0
 #define RIGHT_OFFSET 10
 
-#define MOTOR_SPEED 200
+#define MOTOR_SPEED 255
 
 enum states
 {
-  navigate,
-  map,
-  idle,
+  navigateState,
+  mapState,
+  idleState,
 };
 
 bool motorRunning = true;
@@ -30,7 +30,7 @@ bool lastRand = false;
 
 uint8 timesLooped = 0;
 uint8 speed = percent(50);
-byte state = idle;
+byte state = mapState;
 
 void setup()
 {
@@ -48,146 +48,89 @@ void setup()
   IRSetup();
 }
 
+void map()
+{
+  // Maps the area around the robot by rotating. This function should:
+  // [ ] Spin in a full circle
+  // [ ] Take distance readings with each spin
+  // [ ] Send these distance readings back over serial for a computer to process
+
+  #define SAMPLES 28
+
+  float distances[SAMPLES] = {};
+
+  for (byte i = 0; i < SAMPLES - 1; i++)
+  {
+    distances[i] = getDistance();
+    motorsTurnRightSpeed(MOTOR_SPEED);
+    delay(100);
+  }
+
+  motorsStop();
+
+  String out = "Distances: ";
+
+  for (byte i = 0; i < 20; i++)
+  {
+    if (i != 0) out += " ";
+    out += distances[i];
+  } 
+
+  Serial.println(out);
+  Serial.println("Done");
+
+  // Reset the state to idle once done with processing
+  state = idleState;
+}
+
+void goToByte(byte direction) {
+  // Turn in that direction
+  if (direction != 0)
+    motorsTurnRightSpeed(MOTOR_SPEED);
+
+  // Continue turning for the direction multipled by 100
+  delay(100 * direction);
+
+  // Stop the motors
+  motorsStop();
+}
+
 void loop()
 {
-  // Now, lets check if we have got too close to anything. We can change the motor
-  // running state if we have, to correct the course of the robot.
-  //
-  // TODO: Move distance to intergers, as they are more performant than floats
-  float distance = getDistance();
+  // The main loop has to do  a few things:
+  // [ ] Check the state and decicde on what to do
+  // [ ] Syncronise state with a connected device (e.g. Computer) via Serial
+  // [ ] Delay and other background tasks that are not dependant on each function
 
-  // Check if it is in the stop distance. Ignore if it is set to reverse.
-  if (distance < STOP_DISTANCE)
-  {
-    timesLooped = 0;
+  // If the serial is available, read it and drive to the int that it was told to go
+  // to
+  if (Serial.available() > 0) {
+    // Go in the direction that processing wants to go in
+    byte incoming = Serial.read();
+    goToByte(incoming);
 
-    Serial.println("Checking distance stuff");
+    // Go forward until the distance is smaller
+    motorsStraightSpeed(MOTOR_SPEED);
 
-    if (distance < REVERSE_DISTANCE)
-    {
-      motorsReverseSpeed(MOTOR_SPEED);
-      delay(DISTANCE_DELAY);
-      motorsStop();
-      delay(RESET_DELAY);
-      motorsTurnLeftSpeed(MOTOR_SPEED);
-      delay(DISTANCE_DELAY);
-      motorsStop();
-      delay(RESET_DELAY);
-      return;
-    }
+    // Loop until we have a smaller distance
+    while (getDistance () > 20) {}
 
-    // Stop the motor and make a note of the distance
-    motorRunning = false;
+    // Stop motors once we have reached that smaller distance
     motorsStop();
-    delay(RESET_DELAY);
-    float straightDistance = distance;
 
-    // Turn left and get the left distance
-    motorsTurnLeftSpeed(MOTOR_SPEED);
-    delay(DISTANCE_DELAY + LEFT_OFFSET);
-    motorsStop();
-    float leftDistance = getDistance();
-    delay(RESET_DELAY);
-
-    Serial.print("Left distance: ");
-    Serial.println(leftDistance);
-
-    // Return to the straight distance
-    motorsTurnRightSpeed(MOTOR_SPEED);
-    delay(DISTANCE_DELAY + RIGHT_OFFSET);
-    motorsStop();
-    delay(RESET_DELAY);
-
-    // Turn right and get the right distance
-    motorsTurnRightSpeed(MOTOR_SPEED);
-    delay(DISTANCE_DELAY + RIGHT_OFFSET);
-    motorsStop();
-    float rightDistance = getDistance();
-    delay(RESET_DELAY);
-
-    Serial.print("Right distance: ");
-    Serial.println(rightDistance);
-
-    if (rightDistance > leftDistance && rightDistance > straightDistance)
-    {
-      motorRunning = true;
-    }
-    else if (leftDistance > straightDistance)
-    {
-      motorsTurnLeftSpeed(MOTOR_SPEED);
-      delay(DISTANCE_DELAY + LEFT_OFFSET);
-      motorsStop();
-      delay(RESET_DELAY);
-
-      motorsTurnLeftSpeed(MOTOR_SPEED);
-      delay(DISTANCE_DELAY + LEFT_OFFSET);
-      motorsStop();
-      delay(RESET_DELAY);
-
-      motorRunning = true;
-    }
-    else
-    {
-      motorsReverseSpeed(MOTOR_SPEED);
-      delay(DISTANCE_DELAY * 2);
-      motorsTurnLeftSpeed(MOTOR_SPEED);
-      delay(DISTANCE_DELAY);
-      motorsStop();
-      delay(RESET_DELAY);
-      motorRunning = true;
-      return;
-    }
+    // Tell the robot to map again
+    state = mapState;
+    delay(2000);
   }
 
-  // All of the logic to handle changes. This is out here because that means
-  // I dont have to deal with every edge case. It all just happens at once
-
-  // Make the robot move
-  if (motorRunning)
+  if (state == idleState)
   {
-
-    if (!motorWasRunning)
-    {
-      motorsLeftSpeed(speed, false);
-      delay(200);
-      motorsRightSpeed(speed, false);
-    }
-    else
-    {
-      motorsStraightSpeed(speed);
-    }
-
-    motorWasRunning = true;
+    // If the state is idle, we shouldn't do any specific tasks. Because we aren't doing 
+    // anything, we can slow down the loop to save power
+    delay(500);
+  } else if (state == mapState) {
+    // Call the mapping function to map the current area
+    map();
+    delay(2000);
   }
-  else
-  {
-    motorsStop();
-    motorWasRunning = false;
-  }
-
-  if (timesLooped > 250)
-  {
-    timesLooped = 0;
-    Serial.println(timesLooped);
-    motorsReverseSpeed(MOTOR_SPEED);
-    delay(DISTANCE_DELAY);
-    motorsStop();
-    delay(RESET_DELAY);
-    if (lastRand)
-    {
-      motorsTurnLeftSpeed(MOTOR_SPEED);
-    }
-    else
-    {
-      motorsTurnRightSpeed(MOTOR_SPEED);
-    }
-    delay(DISTANCE_DELAY);
-    motorsStop();
-    delay(RESET_DELAY);
-  }
-
-  // Lets free up the arduino for a period of time to save on battery power
-  delay(20);
-  timesLooped++;
-  lastRand = !lastRand;
 }
