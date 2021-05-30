@@ -1,7 +1,0 @@
-{
-    "port": "/dev/tty.usbmodem14101",
-    "board": "arduino:avr:uno",
-    "programmer": "AVR ISP",
-    "sketch": "Robot_v1.ino",
-    "output": "target"
-}
