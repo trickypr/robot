@@ -15,7 +15,7 @@
 #define LEFT_OFFSET 0
 #define RIGHT_OFFSET 10
 
-#define MOTOR_SPEED 255
+#define MOTOR_SPEED 200
 
 enum states
 {
@@ -70,7 +70,7 @@ void map()
 
   String out = "Distances: ";
 
-  for (byte i = 0; i < 20; i++)
+  for (byte i = 0; i < SAMPLES; i++)
   {
     if (i != 0) out += " ";
     out += distances[i];
