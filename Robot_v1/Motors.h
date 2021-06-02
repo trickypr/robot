@@ -7,8 +7,8 @@
 #define MOTOR_OUT_2 7
 #define MOTOR_ENABLE_1 9
 
-#define MOTOR_OUT_3 8
-#define MOTOR_OUT_4 11
+#define MOTOR_OUT_3 11
+#define MOTOR_OUT_4 8
 #define MOTOR_ENABLE_2 10
 
 // =============================================================================
@@ -17,7 +17,7 @@
 /**
  * Initialises the motor driver. MUST be called before using any of the motor functions
  */
-void motorsSetup()
+inline void motorsSetup()
 {
   // Initialise the pins required for the motor to run correctly
   pinMode(MOTOR_OUT_1, OUTPUT);
@@ -131,4 +131,14 @@ void motorsStop()
   // Stop the motors
   analogWrite(MOTOR_ENABLE_1, 0);
   analogWrite(MOTOR_ENABLE_2, 0);
+}
+
+void motorsTurnLeftSpeed(uint8 speed) {
+  motorsLeftSpeed(speed, false);
+  motorsRightSpeed(speed, true);
+}
+
+void motorsTurnRightSpeed(uint8 speed) {
+  motorsRightSpeed(speed, false);
+  motorsLeftSpeed(speed, true);
 }

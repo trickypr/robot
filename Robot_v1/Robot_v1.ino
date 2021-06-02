@@ -8,22 +8,29 @@
 #include "IR.h"
 
 #define STOP_DISTANCE 20
+#define REVERSE_DISTANCE 15
+#define DISTANCE_DELAY 350
+#define RESET_DELAY 1000
+
+#define LEFT_OFFSET 0
+#define RIGHT_OFFSET 10
+
+#define MOTOR_SPEED 200
 
 enum states
 {
-  straight,
-  left,
-  right,
-  reverse,
+  navigateState,
+  mapState,
+  idleState,
 };
 
 bool motorRunning = true;
 bool motorWasRunning = false;
-bool pauseJustPressed = false;
-bool overrideDist = false;
-byte stateResetCounter = 0;
+bool lastRand = false;
+
+uint8 timesLooped = 0;
 uint8 speed = percent(50);
-byte state = straight;
+byte state = mapState;
 
 void setup()
 {
@@ -41,138 +48,89 @@ void setup()
   IRSetup();
 }
 
+void map()
+{
+  // Maps the area around the robot by rotating. This function should:
+  // [ ] Spin in a full circle
+  // [ ] Take distance readings with each spin
+  // [ ] Send these distance readings back over serial for a computer to process
+
+  #define SAMPLES 28
+
+  float distances[SAMPLES] = {};
+
+  for (byte i = 0; i < SAMPLES - 1; i++)
+  {
+    distances[i] = getDistance();
+    motorsTurnRightSpeed(MOTOR_SPEED);
+    delay(100);
+  }
+
+  motorsStop();
+
+  String out = "Distances: ";
+
+  for (byte i = 0; i < SAMPLES; i++)
+  {
+    if (i != 0) out += " ";
+    out += distances[i];
+  } 
+
+  Serial.println(out);
+  Serial.println("Done");
+
+  // Reset the state to idle once done with processing
+  state = idleState;
+}
+
+void goToByte(byte direction) {
+  // Turn in that direction
+  if (direction != 0)
+    motorsTurnRightSpeed(MOTOR_SPEED);
+
+  // Continue turning for the direction multipled by 100
+  delay(100 * direction);
+
+  // Stop the motors
+  motorsStop();
+}
+
 void loop()
 {
-  // If the state hasn't just changed
-  if (stateResetCounter > 5) {
-    // Reset the state to straight. This will be overridden by an external, constant IR signal
-    state = straight;
-    overrideDist = false;
-  } else {
-    // Increment restet counter
-    stateResetCounter += 1;
-  }
+  // The main loop has to do  a few things:
+  // [ ] Check the state and decicde on what to do
+  // [ ] Syncronise state with a connected device (e.g. Computer) via Serial
+  // [ ] Delay and other background tasks that are not dependant on each function
 
-  // The main code for the robot
-  // If remote input has been received
-  if (IRHasReceivedCommand())
-  {
-    // Retrive the data that the remote has sent
-    IRData data = IRGetData();
+  // If the serial is available, read it and drive to the int that it was told to go
+  // to
+  if (Serial.available() > 0) {
+    // Go in the direction that processing wants to go in
+    byte incoming = Serial.read();
+    goToByte(incoming);
 
-    // If we get command 0x15, the ⏵︎ button is pressed
-    if (data.command == 0x15 && !pauseJustPressed)
-    {
-      // Invert the motor running var
-      motorRunning = !motorRunning;
-      pauseJustPressed = true;
-    }
-    else
-    {
-      pauseJustPressed = false;
-    }
+    // Go forward until the distance is smaller
+    motorsStraightSpeed(MOTOR_SPEED);
 
-    // If we get command 0x09, the ⏭︎ is pressed
-    if (data.command == 0x09)
-    {
-      // Increment the offset
-      state = left;
-    }
-    else if (data.command == 0x7) // If we get command 0x7, the ⏮︎ was pressed
-    {
-      state = right;
-    }
+    // Loop until we have a smaller distance
+    while (getDistance () > 20) {}
 
-    // If we get the command 0x43, the ↩️ button was pressed 
-    if (data.command == 0x43) {
-      state = reverse;
-      motorRunning = true;
-    }
-
-    // If we get command 0x40, the + is pressed
-    if (data.command == 0x40)
-    {
-      speed += 5;
-    }
-
-    // If C is pressed
-    if (data.command == 0xD) {
-      overrideDist = true;
-    }
-
-    // If we get command 0x19, the - is pressed
-    if (data.command == 0x19)
-    {
-      speed -= 5;
-    }
-
-    if (Serial)
-    {
-      Serial.print("Running: ");
-      Serial.print(motorRunning);
-      Serial.print(", State: ");
-      Serial.print(state);
-      Serial.print(", Speed: ");
-      Serial.println(speed);
-    }
-
-    stateResetCounter = 0;
-  }
-
-  // Now, lets check if we have got too close to anything. We can change the motor
-  // running state if we have, to correct the course of the robot.
-  //
-  // TODO: Move distance to intergers, as they are more performant than floats
-  float distance = getDistance();
-
-  // Check if it is in the stop distance. Ignore if it is set to reverse.
-  if (distance < STOP_DISTANCE && state != reverse && !overrideDist)
-  {
-    motorRunning = false;
-  }
-
-  // All of the logic to handle changes. This is out here because that means
-  // I dont have to deal with every edge case. It all just happens at once
-
-  // Make the robot move
-  if (motorRunning)
-  {
-    if (state == left)
-    {
-      motorsLeftSpeed(200, false);
-      motorsRightSpeed(200, true);
-    }
-    else if (state == right)
-    {
-      motorsRightSpeed(200, false);
-      motorsLeftSpeed(200, true);
-    }
-    else if (state == reverse) 
-    {
-      motorsReverseSpeed(speed);
-    }
-    else
-    {
-      // if (!motorWasRunning)
-      // {
-      //   motorsLeftSpeed(speed, false);
-      //   delay(200);
-      //   motorsRightSpeed(speed, false);
-      // }
-      // else
-      // {
-        motorsStraightSpeed(speed);
-      // }
-    }
-
-    motorWasRunning = true;
-  }
-  else
-  {
+    // Stop motors once we have reached that smaller distance
     motorsStop();
-    motorWasRunning = false;
+
+    // Tell the robot to map again
+    state = mapState;
+    delay(2000);
   }
 
-  // Lets free up the arduino for a period of time to save on battery power
-  delay(10);
+  if (state == idleState)
+  {
+    // If the state is idle, we shouldn't do any specific tasks. Because we aren't doing 
+    // anything, we can slow down the loop to save power
+    delay(500);
+  } else if (state == mapState) {
+    // Call the mapping function to map the current area
+    map();
+    delay(2000);
+  }
 }
